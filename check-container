@@ -1,0 +1,13 @@
+#!/bin/bash
+
+cd /home/user
+bash demo-start.sh > /tmp/check-out.txt 2>&1
+EXIT_CODE=$?
+
+if [ $EXIT_CODE -eq 0 ]; then
+  echo "All three fixes in place. Demo environment is running."
+  exit 0
+else
+  cat /tmp/check-out.txt
+  exit 1
+fi

@@ -1,0 +1,85 @@
+#!/bin/bash
+set -euxo pipefail
+
+# Wait for Instruqt bootstrap
+until [ -f /opt/instruqt/bootstrap/host-bootstrap-completed ]; do
+  sleep 1
+done
+
+# Install curl only — intentionally leave jq out (break #3)
+apt-get update -qq && apt-get install -y -qq curl > /dev/null 2>&1
+
+# Create config.yaml with wrong API URL (break #2)
+cat << 'EOF' > /home/user/config.yaml
+api_url: http://localhost:9999
+timeout: 30
+org: acme-corp
+EOF
+
+# Create the broken startup script
+cat << 'EOF' > /home/user/demo-start.sh
+#!/bin/bash
+
+echo "Starting SailPoint demo environment..."
+echo ""
+
+# Break #1: requires SAILPOINT_TENANT env var
+if [ -z "$SAILPOINT_TENANT" ]; then
+  echo "ERROR: SAILPOINT_TENANT environment variable is not set."
+  echo "       Fix: export SAILPOINT_TENANT=acme"
+  exit 1
+fi
+
+# Break #2: checks API using URL in config.yaml (currently wrong port)
+API_URL=$(grep api_url config.yaml | awk '{print $2}')
+echo "Checking API at $API_URL ..."
+HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 "$API_URL/health" 2>/dev/null || echo "000")
+if [ "$HTTP_STATUS" != "200" ]; then
+  echo "ERROR: Cannot reach API at $API_URL (got HTTP $HTTP_STATUS)"
+  echo "       Fix: update api_url in config.yaml to http://localhost:7080"
+  exit 1
+fi
+
+# Break #3: requires jq
+echo "Validating response..."
+curl -s "$API_URL/health" | jq '.status' > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+  echo "ERROR: jq is not installed."
+  echo "       Fix: apt-get install -y jq"
+  exit 1
+fi
+
+echo ""
+echo "✓ SAILPOINT_TENANT is set"
+echo "✓ API is reachable"
+echo "✓ jq is available"
+echo ""
+echo "Demo environment ready."
+EOF
+
+chmod +x /home/user/demo-start.sh
+
+# Start a health API on the correct port 7080
+# (learner needs to point config.yaml here to succeed)
+apt-get install -y -qq python3 > /dev/null 2>&1
+
+cat << 'EOF' > /tmp/health-api.py
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import json
+
+class Handler(BaseHTTPRequestHandler):
+    def log_message(self, format, *args):
+        pass
+    def do_GET(self):
+        if self.path == '/health':
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "ok"}).encode())
+
+HTTPServer(('0.0.0.0', 7080), Handler).serve_forever()
+EOF
+
+python3 /tmp/health-api.py &
+
+chown -R user:user /home/user/

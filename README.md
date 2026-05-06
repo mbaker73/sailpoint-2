@@ -1,48 +1,49 @@
 # Instruqt Track — Scaling Demo Operations with Instruqt
 
-A 3-challenge hands-on demo track built for SailPoint's Demo Center of Excellence.
-Designed to show Chris Hendricks and Mike Stuyt what Instruqt feels like as a learner
-— and what it delivers as an operator.
+3-challenge hands-on demo track for SailPoint's Demo Center of Excellence.
 
-## Track structure
+## Structure
 
-| Challenge | Title | Duration | What it does |
-|-----------|-------|----------|--------------|
-| 1 | Fix the Demo Environment | ~12 min | Broken env — feels the SE pain |
-| 2 | Query Identities with the SailPoint CLI | ~5 min | Clean sandbox — the Instruqt moment |
-| 3 | See the Signal | ~1 min | Analytics dashboard + form |
+```
+.
+├── track.yml                          # Track metadata
+├── config.yml                         # Sandbox config (Ubuntu container)
+├── 01-fix-the-demo-environment/
+│   ├── assignment.md                  # Challenge config + instructions
+│   ├── setup-container                # Runs on challenge load
+│   └── check-container                # Polled every 10s to pass challenge
+├── 02-query-identities-cli/
+│   ├── assignment.md
+│   ├── setup-container
+│   └── check-container
+└── 03-see-the-signal/
+    ├── assignment.md
+    ├── setup-container                # Starts analytics dashboard on :8080
+    └── check-container
+```
 
-## How to connect to Instruqt
-
-1. Push this repo to GitHub (public or private)
-2. In [Instruqt Creator](https://creator.instruqt.com), open your track settings
-3. Go to **Repository** and connect your GitHub repo
-4. Instruqt will sync the track structure automatically
-
-## Before you connect
+## Before pushing
 
 Edit `track.yml` and replace:
 - `your-instruqt-org-slug` → your actual Instruqt org slug
 - `your@email.com` → your email
 
+## Push to Instruqt via CLI
+
+```bash
+# Install CLI from instruqt.com/downloads, then:
+instruqt auth login
+instruqt track push
+```
+
 ## Webhook setup
 
-1. Go to **Settings > Webhooks** in your Instruqt org
-2. Add endpoint — use [webhook.site](https://webhook.site) for testing
-3. Select events: `track.started`, `track.challenge_completed`, `track.completed`
+Settings → Webhooks → add endpoint (use webhook.site for testing)
+Select: `track.started`, `track.challenge_completed`, `track.completed`
 
 ## Invite URL
 
-When creating the invite, set access to **Anyone with the link** and append:
-
+Create invite with **Anyone with the link**, then append:
 ```
 ?icp_se_name=YourName&icp_prospect_id=sailpoint-internal
 ```
-
-These values will appear in all webhook payloads as `custom_parameters`.
-
-## No live SailPoint tenant required
-
-Challenge 2 runs against a mock ISC API (Flask server, ~30 lines of Python)
-pre-seeded with 12 identities. Three have `accessCount > 5` — the learner
-finds them and writes a remediation report.
